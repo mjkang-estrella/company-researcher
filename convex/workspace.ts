@@ -74,14 +74,38 @@ export const upsertProfile = mutationGeneric({
     supplementalNotes: v.string(),
     extractedTextPreview: v.string(),
     derived: v.object({
-      titles: v.array(v.string()),
-      skills: v.array(v.string()),
-      projects: v.array(v.string()),
-      accomplishments: v.array(v.string()),
-      quantifiedResults: v.array(v.string()),
-      domains: v.array(v.string()),
-      careerTrajectory: v.array(v.string()),
-      summary: v.string(),
+      name: v.string(),
+      contact: v.object({
+        email: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+        location: v.optional(v.string()),
+      }),
+      education: v.array(
+        v.object({
+          school: v.string(),
+          degree: v.optional(v.string()),
+          fieldOfStudy: v.optional(v.string()),
+          startDate: v.optional(v.string()),
+          endDate: v.optional(v.string()),
+          accomplishments: v.array(v.string()),
+        }),
+      ),
+      work: v.array(
+        v.object({
+          company: v.string(),
+          role: v.optional(v.string()),
+          startDate: v.optional(v.string()),
+          endDate: v.optional(v.string()),
+          accomplishments: v.array(v.string()),
+        }),
+      ),
+      others: v.object({
+        skills: v.array(v.string()),
+        projects: v.array(v.string()),
+        domains: v.array(v.string()),
+        summary: v.string(),
+      }),
     }),
   },
   handler: async (ctx, args) => {
@@ -344,31 +368,49 @@ export const seedDemoWorkspace = mutationGeneric({
       extractedTextPreview:
         "Senior backend engineer with experience building evaluation systems, developer platforms, and distributed infrastructure at scale.",
       derived: {
-        titles: ["Senior Backend Engineer", "Platform Engineer"],
-        skills: ["Safety Engineering", "Distributed Systems", "Infrastructure", "Evaluations", "APIs", "Startup Scaling"],
-        projects: [
-          "Constraint-based logic platform at Scale AI",
-          "Internal evaluation framework for model quality",
-          "Developer infrastructure for enterprise APIs",
+        name: "Demo Candidate",
+        contact: {
+          email: "demo@example.com",
+          location: "San Francisco, CA",
+        },
+        education: [
+          {
+            school: "University of California, Berkeley",
+            degree: "BS",
+            fieldOfStudy: "Computer Science",
+            accomplishments: ["Focused on systems, ML, and distributed computing coursework"],
+          },
         ],
-        accomplishments: [
-          "Built verifiable backend systems for high-scale ML workflows",
-          "Improved evaluation throughput for model-facing tooling",
-          "Led infrastructure work that reduced operational bottlenecks",
+        work: [
+          {
+            company: "Scale AI",
+            role: "Senior Backend Engineer",
+            accomplishments: [
+              "Built verifiable backend systems for high-scale ML workflows",
+              "Reduced evaluation turnaround time by 42%",
+              "Scaled backend services supporting 10x traffic growth",
+            ],
+          },
+          {
+            company: "Platform Team",
+            role: "Platform Engineer",
+            accomplishments: [
+              "Improved API reliability to 99.95% uptime",
+              "Led infrastructure work that reduced operational bottlenecks",
+            ],
+          },
         ],
-        quantifiedResults: [
-          "Reduced evaluation turnaround time by 42%",
-          "Scaled backend services supporting 10x traffic growth",
-          "Improved API reliability to 99.95% uptime",
-        ],
-        domains: ["AI Infrastructure", "Platform Tooling", "Enterprise Systems"],
-        careerTrajectory: [
-          "Backend engineer",
-          "Platform engineer",
-          "Infrastructure lead on ML-adjacent systems",
-        ],
-        summary:
-          "Backend and platform engineer focused on verifiable systems, evaluation infrastructure, and reliable APIs at scale.",
+        others: {
+          skills: ["Safety Engineering", "Distributed Systems", "Infrastructure", "Evaluations", "APIs", "Startup Scaling"],
+          projects: [
+            "Constraint-based logic platform at Scale AI",
+            "Internal evaluation framework for model quality",
+            "Developer infrastructure for enterprise APIs",
+          ],
+          domains: ["AI Infrastructure", "Platform Tooling", "Enterprise Systems"],
+          summary:
+            "Backend and platform engineer focused on verifiable systems, evaluation infrastructure, and reliable APIs at scale.",
+        },
       },
       createdAt: now,
       updatedAt: now,

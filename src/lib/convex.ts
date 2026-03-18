@@ -1,5 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 import type { BriefRecord, CompanyRecord, ProfileRecord, WorkspaceSnapshot } from "@/lib/types";
+import { normalizeDerivedProfile } from "@/lib/profile";
 
 function getConvexUrl() {
   const url = process.env.CONVEX_URL;
@@ -9,12 +10,24 @@ function getConvexUrl() {
   return url;
 }
 
+let _client: ConvexHttpClient | null = null;
+
 function client() {
-  return new ConvexHttpClient(getConvexUrl());
+  if (!_client) {
+    _client = new ConvexHttpClient(getConvexUrl());
+  }
+  return _client;
 }
 
 export async function getWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
-  return client().query("workspace:getSnapshot" as any, {});
+  const snapshot = await client().query("workspace:getSnapshot" as any, {});
+  if (snapshot.profile) {
+    snapshot.profile = {
+      ...snapshot.profile,
+      derived: normalizeDerivedProfile(snapshot.profile.derived),
+    };
+  }
+  return snapshot;
 }
 
 export async function upsertProfile(input: {

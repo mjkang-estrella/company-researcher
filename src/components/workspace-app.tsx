@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { BriefRecord, CompanyRecord, ProfileRecord, WorkspaceResponse } from "@/lib/types";
 
 type ApiError = {
@@ -17,11 +17,6 @@ async function readJson<T>(response: Response): Promise<T> {
 
 function formatStatus(status: CompanyRecord["status"]) {
   return status.replace("-", " ");
-}
-
-function formatDate(timestamp?: number) {
-  if (!timestamp) return "Never generated";
-  return new Date(timestamp).toLocaleString();
 }
 
 function firstWords(value: string | undefined, fallback: string) {
@@ -43,14 +38,17 @@ export function WorkspaceApp() {
   const [search, setSearch] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeNotes, setResumeNotes] = useState("");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const addCompanyModalRef = useRef<HTMLDivElement>(null);
+  const settingsModalRef = useRef<HTMLDivElement>(null);
 
   const selectedCompany = useMemo(() => {
     if (!snapshot?.selectedCompanyId) return null;
     return snapshot.companies.find((company) => company._id === snapshot.selectedCompanyId) ?? null;
-  }, [snapshot]);
+  }, [snapshot?.selectedCompanyId, snapshot?.companies]);
 
   const selectedBrief = selectedCompany ? snapshot?.briefsByCompanyId[selectedCompany._id] : null;
-  const profileSummary = profileLike(snapshot?.profile)?.derived.summary;
+  const profileSummary = profileLike(snapshot?.profile)?.derived.others.summary;
   const companyDescription = selectedBrief
     ? selectedBrief.overview
     : selectedCompany
@@ -74,6 +72,57 @@ export function WorkspaceApp() {
   useEffect(() => {
     void loadWorkspace();
   }, []);
+
+  const trapFocus = useCallback((modalRef: React.RefObject<HTMLDivElement | null>) => {
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showAddCompany) trapFocus(addCompanyModalRef);
+  }, [showAddCompany, trapFocus]);
+
+  useEffect(() => {
+    if (showSettings) trapFocus(settingsModalRef);
+  }, [showSettings, trapFocus]);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (showAddCompany) setShowAddCompany(false);
+        else if (showSettings) setShowSettings(false);
+      }
+    }
+    if (showAddCompany || showSettings) {
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
+    }
+  }, [showAddCompany, showSettings]);
+
+  function handleModalKeyDown(event: React.KeyboardEvent, modalRef: React.RefObject<HTMLDivElement | null>) {
+    if (event.key !== "Tab") return;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   async function handleSaveResume(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,12 +210,10 @@ export function WorkspaceApp() {
     ) ?? [];
 
   const profile = snapshot?.profile as ProfileRecord | null;
-  const selectedSignals =
-    selectedBrief?.sections
-      .flatMap((section) => section.citations)
-      .map((citation) => citation.title)
-      .filter(Boolean)
-      .slice(0, 4) ?? [];
+  const recentSignalCitations =
+    sectionCitations("overview")
+      .filter((citation) => citation.note === "news")
+      .slice(0, 4);
 
   function sectionConfidence(key: string) {
     return selectedBrief?.sections.find((section) => section.key === key)?.confidence;
@@ -222,13 +269,19 @@ export function WorkspaceApp() {
                   <span className="company-item-meta">{company.url || formatStatus(company.status)}</span>
                 </div>
                 <button
-                  className="company-item-remove"
+                  className={`company-item-remove ${confirmingDeleteId === company._id ? "confirming" : ""}`}
                   type="button"
-                  aria-label={`Remove ${company.name}`}
+                  aria-label={confirmingDeleteId === company._id ? `Confirm remove ${company.name}` : `Remove ${company.name}`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    void deleteCompany(company._id);
+                    if (confirmingDeleteId === company._id) {
+                      setConfirmingDeleteId(null);
+                      void deleteCompany(company._id);
+                    } else {
+                      setConfirmingDeleteId(company._id);
+                    }
                   }}
+                  onBlur={() => setConfirmingDeleteId(null)}
                 >
                   ×
                 </button>
@@ -257,11 +310,6 @@ export function WorkspaceApp() {
           <div className="header-title-area">
             <h1>{selectedCompany?.name || "Company Researcher"}</h1>
             <p className="company-description">{companyDescription}</p>
-            <div className="pill-group">
-              <span className="pill">Target Company</span>
-              <span className="pill">{selectedCompany ? formatStatus(selectedCompany.status) : "Workspace View"}</span>
-              <span className="pill">{selectedCompany?.url || "Live Web Briefs"}</span>
-            </div>
           </div>
           <div className="header-actions">
             {selectedCompany ? (
@@ -269,13 +317,17 @@ export function WorkspaceApp() {
                 className="pill active"
                 type="button"
                 disabled={updatingBrief || !profile}
+                aria-busy={updatingBrief}
                 onClick={() => generateBrief(selectedCompany._id)}
               >
-                {selectedBrief ? "Refresh Brief" : "Generate Brief"}
+                {updatingBrief ? "Generating…" : selectedBrief ? "Refresh Brief" : "Generate Brief"}
               </button>
             ) : null}
-            <button className="pill" type="button" onClick={() => loadWorkspace()}>
-              Reload
+            <button className="icon-btn-circle" type="button" aria-label="Reload workspace" onClick={() => loadWorkspace()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
             </button>
             <button className="icon-btn-circle" type="button" aria-label="Add company" onClick={() => setShowAddCompany(true)}>
               +
@@ -316,7 +368,7 @@ export function WorkspaceApp() {
               <>
                 <span className="label">Matched Attributes</span>
                 <div className="pill-group" style={{ marginBottom: "2rem" }}>
-                  {profile.derived.skills.slice(0, 3).map((skill) => (
+                  {profile.derived.others.skills.slice(0, 3).map((skill) => (
                     <span key={skill} className="pill">
                       {skill}
                     </span>
@@ -390,8 +442,12 @@ export function WorkspaceApp() {
         <main className="main-panel">
           {error ? (
             <div className="panel-section" style={{ borderBottom: "var(--border)" }}>
-              <div className="notice-panel">
+              <div className="notice-panel notice-panel-row">
                 <p className="no-mb">{error}</p>
+                <div className="notice-panel-actions">
+                  <button type="button" className="btn-cancel" onClick={() => loadWorkspace()}>Retry</button>
+                  <button type="button" className="notice-dismiss" aria-label="Dismiss error" onClick={() => setError(null)}>×</button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -440,10 +496,14 @@ export function WorkspaceApp() {
                     <h2>Recent Signals</h2>
                     <span className="pill pill-tag">{sectionConfidence("overview")}</span>
                   </div>
-                  {selectedSignals.length ? (
+                  {recentSignalCitations.length ? (
                     <ul className="stark-list">
-                      {selectedSignals.map((signal, index) => (
-                        <li key={`${signal}-${index}`}>{signal}</li>
+                      {recentSignalCitations.map((citation) => (
+                        <li key={`${citation.url}-${citation.title}`}>
+                          <a href={citation.url} rel="noreferrer" target="_blank">
+                            {citation.title}
+                          </a>
+                        </li>
                       ))}
                     </ul>
                   ) : (
@@ -513,19 +573,30 @@ export function WorkspaceApp() {
 
       {showAddCompany ? (
         <div className="modal-overlay" role="presentation" onClick={() => setShowAddCompany(false)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <h3>Add Company</h3>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-company-title"
+            ref={addCompanyModalRef}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => handleModalKeyDown(event, addCompanyModalRef)}
+          >
+            <h2 id="add-company-title">Add Company</h2>
             <p className="app-hint">Use the optional URL only when the company name needs disambiguation.</p>
             <form onSubmit={handleAddCompany}>
+              <label htmlFor="company-name" className="label">Company name</label>
               <input
-                placeholder="Company name"
+                id="company-name"
+                placeholder="e.g. Acme Corp"
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
                 required
               />
+              <label htmlFor="company-url" className="label" style={{ marginTop: "0.75rem" }}>Company URL</label>
               <input
-                style={{ marginTop: "0.75rem" }}
-                placeholder="Optional company URL"
+                id="company-url"
+                placeholder="Optional, for disambiguation"
                 value={companyUrl}
                 onChange={(event) => setCompanyUrl(event.target.value)}
               />
@@ -544,8 +615,16 @@ export function WorkspaceApp() {
 
       {showSettings ? (
         <div className="modal-overlay" role="presentation" onClick={() => setShowSettings(false)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <h3>Settings</h3>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+            ref={settingsModalRef}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => handleModalKeyDown(event, settingsModalRef)}
+          >
+            <h2 id="settings-title">Settings</h2>
             <p className="app-hint">Shared resume settings apply across all saved companies in this workspace.</p>
             <form className="resume-panel" onSubmit={handleSaveResume}>
               <div className="resume-panel-header">

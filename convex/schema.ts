@@ -14,7 +14,7 @@ const citation = v.object({
   note: v.optional(v.string()),
 });
 
-const derivedProfile = v.object({
+const legacyDerivedProfile = v.object({
   titles: v.array(v.string()),
   skills: v.array(v.string()),
   projects: v.array(v.string()),
@@ -23,6 +23,41 @@ const derivedProfile = v.object({
   domains: v.array(v.string()),
   careerTrajectory: v.array(v.string()),
   summary: v.string(),
+});
+
+const derivedProfile = v.object({
+  name: v.string(),
+  contact: v.object({
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    linkedin: v.optional(v.string()),
+    location: v.optional(v.string()),
+  }),
+  education: v.array(
+    v.object({
+      school: v.string(),
+      degree: v.optional(v.string()),
+      fieldOfStudy: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      endDate: v.optional(v.string()),
+      accomplishments: v.array(v.string()),
+    }),
+  ),
+  work: v.array(
+    v.object({
+      company: v.string(),
+      role: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      endDate: v.optional(v.string()),
+      accomplishments: v.array(v.string()),
+    }),
+  ),
+  others: v.object({
+    skills: v.array(v.string()),
+    projects: v.array(v.string()),
+    domains: v.array(v.string()),
+    summary: v.string(),
+  }),
 });
 
 export default defineSchema({
@@ -38,7 +73,7 @@ export default defineSchema({
     sourceFileName: v.optional(v.string()),
     supplementalNotes: v.string(),
     extractedTextPreview: v.string(),
-    derived: derivedProfile,
+    derived: v.union(derivedProfile, legacyDerivedProfile),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_workspace", ["workspaceId"]),

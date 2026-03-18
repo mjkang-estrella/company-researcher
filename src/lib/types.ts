@@ -2,14 +2,34 @@ export type ConfidenceLevel = "high" | "medium" | "low";
 export type CompanyStatus = "idle" | "generating" | "ready" | "failed" | "limited-data";
 
 export type DerivedProfile = {
-  titles: string[];
-  skills: string[];
-  projects: string[];
-  accomplishments: string[];
-  quantifiedResults: string[];
-  domains: string[];
-  careerTrajectory: string[];
-  summary: string;
+  name: string;
+  contact: {
+    email?: string;
+    phone?: string;
+    linkedin?: string;
+    location?: string;
+  };
+  education: Array<{
+    school: string;
+    degree?: string;
+    fieldOfStudy?: string;
+    startDate?: string;
+    endDate?: string;
+    accomplishments: string[];
+  }>;
+  work: Array<{
+    company: string;
+    role?: string;
+    startDate?: string;
+    endDate?: string;
+    accomplishments: string[];
+  }>;
+  others: {
+    skills: string[];
+    projects: string[];
+    domains: string[];
+    summary: string;
+  };
 };
 
 export type ProfileRecord = {
