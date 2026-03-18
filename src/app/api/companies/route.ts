@@ -9,12 +9,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Company name is required." }, { status: 400 });
     }
 
-    await addCompany({
+    const companyId = await addCompany({
       name,
       url: body.url?.trim() || undefined,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, companyId });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to add company." },

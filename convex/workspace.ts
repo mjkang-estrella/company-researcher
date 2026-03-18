@@ -249,6 +249,7 @@ export const saveBrief = mutationGeneric({
       }),
     ),
     brief: v.object({
+      companyIntro: v.optional(v.string()),
       overview: v.string(),
       currentDirectionAndNeeds: v.string(),
       suggestedQuestions: v.object({
@@ -314,6 +315,7 @@ export const saveBrief = mutationGeneric({
       workspaceId: workspace._id,
       companyId: args.companyId,
       generatedAt: args.brief.generatedAt,
+      companyIntro: args.brief.companyIntro,
       overview: args.brief.overview,
       currentDirectionAndNeeds: args.brief.currentDirectionAndNeeds,
       suggestedQuestions: args.brief.suggestedQuestions,
@@ -506,6 +508,7 @@ export const seedDemoWorkspace = mutationGeneric({
       workspaceId: workspace._id,
       companyId: anthropicId,
       generatedAt: now,
+      companyIntro: "Building frontier AI models and API products with a strong emphasis on safety and reliability.",
       overview:
         "Anthropic is an AI research and safety company building frontier models and API products, with visible momentum in productization, enterprise readiness, and model evaluation infrastructure.",
       currentDirectionAndNeeds:

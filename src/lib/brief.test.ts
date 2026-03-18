@@ -162,6 +162,7 @@ describe("synthesizeBrief", () => {
 
     process.env.OPENAI_API_KEY = previousKey;
 
+    expect(result.brief.companyIntro).toContain("Variant Bio");
     expect(result.brief.overview).toContain("Variant Bio");
     expect(result.brief.currentDirectionAndNeeds.toLowerCase()).toContain("likely near-term needs");
     expect(result.brief.suggestedQuestions.personalized.join(" ")).not.toContain("linkedin.com");

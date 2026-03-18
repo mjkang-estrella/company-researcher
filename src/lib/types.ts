@@ -79,6 +79,7 @@ export type BriefRecord = {
   _id?: string;
   companyId: string;
   generatedAt: number;
+  companyIntro?: string;
   overview: string;
   currentDirectionAndNeeds: string;
   suggestedQuestions: {

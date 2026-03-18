@@ -19,10 +19,9 @@ function formatStatus(status: CompanyRecord["status"]) {
   return status.replace("-", " ");
 }
 
-function firstWords(value: string | undefined, fallback: string) {
-  if (!value) return fallback;
-  const compact = value.replace(/\s+/g, " ").trim();
-  return compact.length > 180 ? `${compact.slice(0, 179)}…` : compact;
+function formatDate(timestamp?: number) {
+  if (!timestamp) return "—";
+  return new Date(timestamp).toLocaleDateString();
 }
 
 export function WorkspaceApp() {
@@ -49,7 +48,7 @@ export function WorkspaceApp() {
   const selectedBrief = selectedCompany ? snapshot?.briefsByCompanyId[selectedCompany._id] : null;
   const profileSummary = profileLike(snapshot?.profile)?.derived.others.summary;
   const companyDescription = selectedBrief
-    ? selectedBrief.overview
+    ? selectedBrief.companyIntro ?? selectedBrief.overview
     : selectedCompany
       ? `Saved workspace entry${selectedCompany.url ? ` · ${selectedCompany.url}` : ""}`
       : "Saved company research workspace";
@@ -133,10 +132,34 @@ export function WorkspaceApp() {
         }
         formData.append("notes", resumeNotes);
 
-        await readJson(await fetch("/api/profile", { method: "POST", body: formData }));
+        const payload = await readJson<{ ok: true; derived: ProfileRecord["derived"] }>(
+          await fetch("/api/profile", { method: "POST", body: formData }),
+        );
         setResumeFile(null);
         setShowSettings(false);
-        await loadWorkspace();
+        setSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                profile: current.profile
+                  ? {
+                      ...current.profile,
+                      sourceFileName: resumeFile?.name || current.profile.sourceFileName,
+                      supplementalNotes: resumeNotes,
+                      derived: payload.derived,
+                      updatedAt: Date.now(),
+                    }
+                  : {
+                      _id: "local-profile",
+                      sourceFileName: resumeFile?.name,
+                      supplementalNotes: resumeNotes,
+                      extractedTextPreview: "",
+                      derived: payload.derived,
+                      updatedAt: Date.now(),
+                    },
+              }
+            : current,
+        );
       } catch (saveError) {
         setError(saveError instanceof Error ? saveError.message : "Failed to save resume.");
       }
@@ -146,17 +169,34 @@ export function WorkspaceApp() {
   async function handleAddCompany(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await readJson(
+      const payload = await readJson<{ ok: true; companyId: string }>(
         await fetch("/api/companies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: companyName, url: companyUrl || undefined }),
         }),
       );
+      setSnapshot((current) =>
+        current
+          ? {
+              ...current,
+              companies: [
+                {
+                  _id: payload.companyId,
+                  name: companyName.trim(),
+                  url: companyUrl.trim() || undefined,
+                  status: "idle",
+                  updatedAt: Date.now(),
+                },
+                ...current.companies,
+              ],
+              selectedCompanyId: payload.companyId,
+            }
+          : current,
+      );
       setCompanyName("");
       setCompanyUrl("");
       setShowAddCompany(false);
-      await loadWorkspace();
     } catch (addError) {
       setError(addError instanceof Error ? addError.message : "Failed to add company.");
     }
@@ -169,7 +209,7 @@ export function WorkspaceApp() {
           method: "PATCH",
         }),
       );
-      await loadWorkspace();
+      setSnapshot((current) => (current ? { ...current, selectedCompanyId: companyId } : current));
     } catch (selectionError) {
       setError(selectionError instanceof Error ? selectionError.message : "Failed to select company.");
     }
@@ -182,7 +222,20 @@ export function WorkspaceApp() {
           method: "DELETE",
         }),
       );
-      await loadWorkspace();
+      setSnapshot((current) => {
+        if (!current) return current;
+        const companies = current.companies.filter((company) => company._id !== companyId);
+        const briefsByCompanyId = { ...current.briefsByCompanyId };
+        delete briefsByCompanyId[companyId];
+
+        return {
+          ...current,
+          companies,
+          briefsByCompanyId,
+          selectedCompanyId:
+            current.selectedCompanyId === companyId ? (companies[0]?._id ?? null) : current.selectedCompanyId,
+        };
+      });
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Failed to delete company.");
     }
@@ -226,8 +279,21 @@ export function WorkspaceApp() {
     return selectedBrief?.sections.find((section) => section.key === key)?.citations ?? [];
   }
 
+  const statusMessage = error
+    ? ""
+    : savingResume
+      ? "Saving shared profile."
+      : updatingBrief
+        ? "Generating company brief."
+        : loading
+          ? "Loading workspace."
+          : "";
+
   return (
     <>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {statusMessage}
+      </div>
       <div className="app-grid">
         <nav className="company-list-panel">
           <div className="company-list-header">
@@ -252,21 +318,14 @@ export function WorkspaceApp() {
             {filteredCompanies.map((company) => (
               <div
                 key={company._id}
-                className={`company-item ${company._id === snapshot?.selectedCompanyId ? "active" : ""}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => selectCompany(company._id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    void selectCompany(company._id);
-                  }
-                }}
+                className={`company-item-row ${company._id === snapshot?.selectedCompanyId ? "active" : ""}`}
               >
-                <div className="company-item-info">
-                  <span className="company-item-name">{company.name}</span>
-                  <span className="company-item-meta">{company.url || formatStatus(company.status)}</span>
-                </div>
+                <button className="company-item" type="button" onClick={() => selectCompany(company._id)}>
+                  <div className="company-item-info">
+                    <span className="company-item-name">{company.name}</span>
+                    <span className="company-item-meta">{company.url || formatStatus(company.status)}</span>
+                  </div>
+                </button>
                 <button
                   className="company-item-remove"
                   type="button"
@@ -417,9 +476,7 @@ export function WorkspaceApp() {
               </div>
               <div className="data-item">
                 <span className="label">Updated</span>
-                <span className="data-value">
-                  {selectedCompany?.lastGeneratedAt ? new Date(selectedCompany.lastGeneratedAt).toLocaleDateString() : "—"}
-                </span>
+                <span className="data-value">{formatDate(selectedCompany?.lastGeneratedAt)}</span>
               </div>
             </div>
 
@@ -428,7 +485,7 @@ export function WorkspaceApp() {
                 <span className="label" style={{ marginTop: "2rem" }}>
                   Profile Summary
                 </span>
-                <p className="no-mb">{firstWords(profileSummary, "")}</p>
+                <p className="no-mb">{profileSummary}</p>
               </>
             ) : null}
           </div>
@@ -437,7 +494,7 @@ export function WorkspaceApp() {
         <main className="main-panel">
           {error ? (
             <div className="panel-section" style={{ borderBottom: "var(--border)" }}>
-              <div className="notice-panel notice-panel-row">
+              <div className="notice-panel notice-panel-row" role="alert">
                 <p className="no-mb">{error}</p>
                 <div className="notice-panel-actions">
                   <button type="button" className="btn-cancel" onClick={() => loadWorkspace()}>Retry</button>

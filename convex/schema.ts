@@ -101,6 +101,7 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     companyId: v.id("companies"),
     generatedAt: v.number(),
+    companyIntro: v.optional(v.string()),
     overview: v.string(),
     currentDirectionAndNeeds: v.string(),
     suggestedQuestions: v.object({

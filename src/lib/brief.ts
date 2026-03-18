@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 
 const llmBriefSchema = z.object({
+  companyIntro: z.string(),
   overview: z.string(),
   currentDirectionAndNeeds: z.string(),
   suggestedQuestions: z.object({
@@ -88,10 +89,85 @@ function firstUsefulSentences(value: string, count = 2) {
   return sentenceList(value).slice(0, count).join(" ");
 }
 
+function isCareersSource(source: SourceRecord) {
+  const text = `${source.title} ${source.url} ${source.excerpt}`.toLowerCase();
+  return /\b(careers|jobs|job|hiring|open roles|open positions|join our team)\b/.test(text);
+}
+
+function introSources(sources: SourceRecord[]) {
+  return [
+    ...sources.filter((source) => source.sourceType === "official" && !isCareersSource(source)),
+    ...sources.filter((source) => source.sourceType === "search"),
+    ...sources.filter((source) => source.sourceType === "official" && isCareersSource(source)),
+  ];
+}
+
+function needsSources(sources: SourceRecord[]) {
+  return [
+    ...sources.filter((source) => source.sourceType === "official" && !isCareersSource(source)),
+    ...sources.filter((source) => source.sourceType === "news"),
+    ...sources.filter((source) => source.sourceType === "search"),
+    ...sources.filter((source) => source.sourceType === "official" && isCareersSource(source)),
+  ];
+}
+
+function recentNewsSources(sources: SourceRecord[]) {
+  return sources.filter((source) => source.sourceType === "news");
+}
+
 function summarizeSignals(sources: SourceRecord[]) {
   return unique(
     sources.flatMap((source) => source.signals).map(sanitizeSentence).filter((signal) => signal.length > 30),
   ).slice(0, 8);
+}
+
+function containsPromptLeak(value: string) {
+  return /\b(start for free|read more|pricing|careers|docs|view open roles|health & fitness|flexible pto|benefits)\b/i.test(
+    value,
+  );
+}
+
+function isWeakIntro(value: string) {
+  const compact = sanitizeSentence(value);
+  return (
+    !compact ||
+    sentenceList(compact).length !== 1 ||
+    compact.length > 180 ||
+    containsPromptLeak(compact) ||
+    /\b(we raised|we're looking to grow fast|we'd love to hear from you|build the future)\b/i.test(compact)
+  );
+}
+
+function isWeakOverview(value: string) {
+  const compact = sanitizeSentence(value);
+  return (
+    !compact ||
+    containsPromptLeak(compact) ||
+    compact.split(" - ").length > 2 ||
+    sentenceList(compact).length === 0
+  );
+}
+
+function isWeakNeeds(value: string) {
+  const compact = sanitizeSentence(value);
+  const careersMentions = compact.match(/\b(careers|jobs|job|hiring|open roles|team)\b/gi)?.length ?? 0;
+  return (
+    !compact ||
+    containsPromptLeak(compact) ||
+    careersMentions >= 3 ||
+    !/\b(need|needs|priority|priorities|risk|execution|strategy|strategic|bottleneck|focus|phase)\b/i.test(compact)
+  );
+}
+
+function isWeakQuestion(value: string) {
+  const compact = sanitizeSentence(value);
+  return (
+    !compact ||
+    compact.length < 20 ||
+    /@|linkedin\.com|github\.com|https?:\/\/|www\./i.test(compact) ||
+    /\+?\d[\d\s().-]{7,}\d/.test(compact) ||
+    /\b(education|contact|phone|email)\b/i.test(compact)
+  );
 }
 
 function cleanProfileValue(value: string) {
@@ -109,8 +185,9 @@ function cleanProfileList(values: string[], limit: number) {
 }
 
 function companyDescription(company: CompanyRecord, sources: SourceRecord[]) {
-  const official = sources.find((source) => source.sourceType === "official");
-  const search = sources.find((source) => source.sourceType === "search");
+  const prioritized = introSources(sources);
+  const official = prioritized.find((source) => source.sourceType === "official");
+  const search = prioritized.find((source) => source.sourceType === "search");
   const source = official ?? search;
   if (!source) {
     return `${company.name} is a company with limited public source coverage in the current brief.`;
@@ -122,10 +199,17 @@ function companyDescription(company: CompanyRecord, sources: SourceRecord[]) {
   );
 }
 
+function singleSentenceIntro(value: string, fallback: string) {
+  const first = sentenceList(value)[0];
+  if (!first) return fallback;
+  return first.replace(/[;:]\s.*$/, "").trim();
+}
+
 function inferStrategicNeeds(company: CompanyRecord, sources: SourceRecord[]) {
-  const official = sources.filter((source) => source.sourceType === "official");
-  const news = sources.filter((source) => source.sourceType === "news");
-  const search = sources.filter((source) => source.sourceType === "search");
+  const scoped = needsSources(sources);
+  const official = scoped.filter((source) => source.sourceType === "official" && !isCareersSource(source));
+  const news = scoped.filter((source) => source.sourceType === "news");
+  const search = scoped.filter((source) => source.sourceType === "search");
   const combined = `${official.map((item) => item.excerpt).join(" ")} ${news.map((item) => item.excerpt).join(" ")} ${search.map((item) => item.excerpt).join(" ")}`.toLowerCase();
 
   const needs: string[] = [];
@@ -168,8 +252,7 @@ function inferStrategicNeeds(company: CompanyRecord, sources: SourceRecord[]) {
 }
 
 function buildGeneralQuestions(company: CompanyRecord, sources: SourceRecord[]) {
-  const newsTitles = sources
-    .filter((source) => source.sourceType === "news")
+  const newsTitles = recentNewsSources(sources)
     .map((source) => source.title)
     .slice(0, 2);
 
@@ -242,14 +325,16 @@ function buildAppealAngle(profile: DerivedProfile, company: CompanyRecord, sourc
 }
 
 function buildFallbackBrief(company: CompanyRecord, profile: DerivedProfile, sources: SourceRecord[]) {
+  const intro = companyDescription(company, introSources(sources));
   return {
-    overview: companyDescription(company, sources),
-    currentDirectionAndNeeds: inferStrategicNeeds(company, sources),
+    companyIntro: singleSentenceIntro(intro, `${company.name} is a company with limited public source coverage in the current brief.`),
+    overview: companyDescription(company, introSources(sources)),
+    currentDirectionAndNeeds: inferStrategicNeeds(company, needsSources(sources)),
     suggestedQuestions: {
-      general: buildGeneralQuestions(company, sources),
+      general: buildGeneralQuestions(company, recentNewsSources(sources)),
       personalized: buildPersonalizedQuestions(profile, company),
     },
-    appealAngle: buildAppealAngle(profile, company, sources),
+    appealAngle: buildAppealAngle(profile, company, needsSources(sources)),
   };
 }
 
@@ -284,9 +369,10 @@ Use only the provided sources and safe candidate profile.
 If information is weak, stay conservative and make strategic assumptions explicit.
 
 Return strict JSON with keys:
-overview, currentDirectionAndNeeds, suggestedQuestions.general, suggestedQuestions.personalized, appealAngle.talkTracks, appealAngle.talkingPoints.
+companyIntro, overview, currentDirectionAndNeeds, suggestedQuestions.general, suggestedQuestions.personalized, appealAngle.talkTracks, appealAngle.talkingPoints.
 
 Rules:
+- companyIntro: exactly one sentence, plain English, defining what the company does now. No banner copy, no fundraising CTA, no careers copy, no slogans.
 - overview: describe what the company is and what it appears to be doing now. Do not make this a list of news headlines.
 - currentDirectionAndNeeds: infer the company's current situation and likely strategic needs. Do not paste raw source text. Do not turn this into a careers summary.
 - suggestedQuestions.general: ask strategic, research-backed questions about priorities, execution risks, and current direction.
@@ -323,24 +409,32 @@ function repairBrief(base: z.infer<typeof llmBriefSchema>, company: CompanyRecor
   const fallback = buildFallbackBrief(company, profile, sources);
   const personalized = base.suggestedQuestions.personalized
     .map(sanitizeSentence)
-    .filter((question) => !/@|linkedin\.com|github\.com|https?:\/\/|www\./i.test(question))
-    .filter((question) => !/\+?\d[\d\s().-]{7,}\d/.test(question))
-    .filter((question) => !/education/i.test(question));
+    .filter((question) => !isWeakQuestion(question));
+  const general = base.suggestedQuestions.general
+    .map(sanitizeSentence)
+    .filter((question) => !isWeakQuestion(question));
+  const talkingPoints = base.appealAngle.talkingPoints
+    .map(sanitizeSentence)
+    .filter((point) => !isWeakQuestion(point))
+    .slice(0, 5);
 
   return {
-    overview: firstUsefulSentences(base.overview, 2) || fallback.overview,
-    currentDirectionAndNeeds: firstUsefulSentences(base.currentDirectionAndNeeds, 4) || fallback.currentDirectionAndNeeds,
+    companyIntro: isWeakIntro(base.companyIntro)
+      ? fallback.companyIntro
+      : singleSentenceIntro(base.companyIntro, fallback.companyIntro),
+    overview: isWeakOverview(base.overview)
+      ? fallback.overview
+      : firstUsefulSentences(base.overview, 2) || fallback.overview,
+    currentDirectionAndNeeds: isWeakNeeds(base.currentDirectionAndNeeds)
+      ? fallback.currentDirectionAndNeeds
+      : firstUsefulSentences(base.currentDirectionAndNeeds, 4) || fallback.currentDirectionAndNeeds,
     suggestedQuestions: {
-      general: base.suggestedQuestions.general.map(sanitizeSentence).filter(Boolean).slice(0, 3),
+      general: (general.length >= 2 ? general : fallback.suggestedQuestions.general).slice(0, 3),
       personalized: (personalized.length > 0 ? personalized : fallback.suggestedQuestions.personalized).slice(0, 3),
     },
     appealAngle: {
       talkTracks: base.appealAngle.talkTracks.map(sanitizeSentence).filter(Boolean).slice(0, 3),
-      talkingPoints: base.appealAngle.talkingPoints
-        .map(sanitizeSentence)
-        .filter((point) => !/@|linkedin\.com|github\.com|https?:\/\/|www\./i.test(point))
-        .filter((point) => !/\+?\d[\d\s().-]{7,}\d/.test(point))
-        .slice(0, 5),
+      talkingPoints: (talkingPoints.length > 0 ? talkingPoints : fallback.appealAngle.talkingPoints).slice(0, 5),
     },
   };
 }
@@ -353,18 +447,19 @@ export async function synthesizeBrief(
   const llm = await generateWithLlm(company, profile, sources);
   const base = llm ? repairBrief(llm, company, profile, sources) : buildFallbackBrief(company, profile, sources);
 
-  const newsSources = sources.filter((source) => source.sourceType === "news");
+  const newsSources = recentNewsSources(sources);
   const officialSources = sources.filter((source) => source.sourceType === "official");
+  const nonCareerOfficialSources = officialSources.filter((source) => !isCareersSource(source));
   const searchSources = sources.filter((source) => source.sourceType === "search");
 
-  const overviewCitations = [...newsSources, ...officialSources]
+  const overviewCitations = [...nonCareerOfficialSources, ...searchSources, ...newsSources]
     .slice(0, 4)
     .map<Citation>((source) => ({
       title: source.title,
       url: source.url,
       note: source.sourceType,
     }));
-  const needsCitations = [...newsSources, ...officialSources, ...searchSources]
+  const needsCitations = [...newsSources, ...nonCareerOfficialSources, ...searchSources]
     .slice(0, 4)
     .map<Citation>((source) => ({
       title: source.title,
@@ -396,6 +491,7 @@ export async function synthesizeBrief(
   return {
     brief: {
       generatedAt: Date.now(),
+      companyIntro: base.companyIntro,
       overview: base.overview,
       currentDirectionAndNeeds: base.currentDirectionAndNeeds,
       suggestedQuestions: {

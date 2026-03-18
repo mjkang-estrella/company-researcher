@@ -4,12 +4,20 @@
   --fg-muted: #a1a1aa;
   --border-color: rgba(255, 255, 255, 0.12);
   --border: 1px solid var(--border-color);
-  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --font-stack: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --accent: #ffffff;
   --color-danger: #f87171;
   --color-warning: #fbbf24;
   --color-success: #4ade80;
   --surface-overlay: #1a1a1e;
+  --surface-soft: rgba(255, 255, 255, 0.02);
+  --surface-muted: rgba(255, 255, 255, 0.03);
+  --surface-input: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --surface-strong-hover: rgba(255, 255, 255, 0.08);
+  --divider-subtle: rgba(255, 255, 255, 0.05);
+  --focus-ring: rgba(255, 255, 255, 0.5);
   color-scheme: dark;
 }
 
@@ -97,7 +105,7 @@ p {
   padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   color: var(--fg-muted);
   cursor: default;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
@@ -111,8 +119,8 @@ button.pill {
 }
 
 button.pill:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--surface-strong-hover);
+  border-color: var(--border-strong);
   color: var(--fg);
 }
 
@@ -124,11 +132,11 @@ button.pill:hover {
 }
 
 .icon-btn-circle {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.875rem;
+  height: 2.875rem;
   border-radius: 6px;
   border: var(--border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   color: var(--fg-muted);
   display: flex;
   align-items: center;
@@ -138,7 +146,7 @@ button.pill:hover {
 }
 
 .icon-btn-circle:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--border-strong);
   color: var(--fg);
 }
 
@@ -149,7 +157,7 @@ button.pill:hover {
 .stark-list li {
   margin-bottom: 1.25rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--divider-subtle);
   color: var(--fg-muted);
   font-size: 0.925rem;
   line-height: 1.5;
@@ -181,6 +189,18 @@ button.pill:hover {
   overflow: hidden;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .modal h2 {
   font-size: 1.1rem;
   margin-bottom: 0;
@@ -191,7 +211,7 @@ button.pill:hover {
   border-right: var(--border);
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-soft);
   overflow: hidden;
 }
 
@@ -214,11 +234,11 @@ button.pill:hover {
 }
 
 .company-list-actions button {
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 5px;
   border: var(--border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   color: var(--fg-muted);
   display: flex;
   align-items: center;
@@ -230,9 +250,9 @@ button.pill:hover {
 }
 
 .company-list-actions button:hover {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--border-strong);
   color: var(--fg);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-hover);
 }
 
 .company-list-search {
@@ -246,7 +266,7 @@ button.pill:hover {
 .resume-panel input[type="file"],
 .resume-panel textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-input);
   border: var(--border);
   border-radius: 6px;
   color: var(--fg);
@@ -270,7 +290,7 @@ button.pill:hover {
 .modal input:focus,
 .resume-panel textarea:focus,
 .resume-panel input[type="file"]:focus {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--border-strong);
 }
 
 .company-list-items {
@@ -279,22 +299,35 @@ button.pill:hover {
   padding: 0.5rem 0;
 }
 
+.company-item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  padding-right: 0.5rem;
+}
+
 .company-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   padding: 0.7rem 1.25rem;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
   border-left: 2px solid transparent;
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  text-align: left;
 }
 
 .company-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-input);
 }
 
-.company-item.active {
-  background: rgba(255, 255, 255, 0.06);
+.company-item-row.active .company-item {
+  background: var(--surface-hover);
   border-left-color: var(--accent);
 }
 
@@ -314,7 +347,7 @@ button.pill:hover {
   text-overflow: ellipsis;
 }
 
-.company-item.active .company-item-name {
+.company-item-row.active .company-item-name {
   color: var(--accent);
 }
 
@@ -327,11 +360,13 @@ button.pill:hover {
 }
 
 .company-item-remove {
-  opacity: 0;
-  background: none;
+  opacity: 0.7;
+  background: transparent;
   border: none;
   color: var(--fg-muted);
   cursor: pointer;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0.5rem;
   font-size: 0.875rem;
   transition: opacity 0.15s ease, color 0.15s ease;
@@ -339,7 +374,7 @@ button.pill:hover {
   line-height: 1;
 }
 
-.company-item:hover .company-item-remove,
+.company-item-row:hover .company-item-remove,
 .company-item-remove:focus-visible {
   opacity: 1;
 }
@@ -368,8 +403,9 @@ button.pill:hover {
   margin: 1rem 1.25rem 1.25rem;
   border: var(--border);
   border-radius: 6px;
+  min-height: 2.875rem;
   padding: 0.65rem 0.75rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   color: var(--fg);
   display: flex;
   align-items: center;
@@ -381,8 +417,8 @@ button.pill:hover {
 }
 
 .settings-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--surface-strong-hover);
+  border-color: var(--border-strong);
 }
 
 .settings-trigger-label {
@@ -432,7 +468,7 @@ button.pill:hover {
   border: var(--border);
   border-radius: 6px;
   padding: 0.35rem 0.65rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   color: var(--fg);
   font-family: inherit;
   cursor: pointer;
@@ -486,7 +522,7 @@ button.pill:hover {
 }
 
 .panel-section.highlighted {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-muted);
   border-left: 2px solid var(--accent);
 }
 
@@ -557,7 +593,7 @@ button.pill:hover {
 .empty-state-panel,
 .notice-panel {
   border: var(--border);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-soft);
   padding: 1rem 1.1rem;
   border-radius: 8px;
 }
@@ -624,6 +660,9 @@ button.pill:hover {
 
 .section-citations a {
   color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  text-underline-offset: 0.18em;
 }
 
 .modal-overlay {
@@ -705,7 +744,7 @@ button.pill:hover {
 }
 
 :focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -726,6 +765,9 @@ button.pill:hover {
   .app-grid {
     grid-template-columns: 220px 1fr;
     grid-template-rows: auto auto 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .sidebar-panel {
@@ -733,22 +775,20 @@ button.pill:hover {
     grid-row: 2;
     border-right: none;
     border-bottom: var(--border);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto;
-    max-height: 360px;
-    overflow-y: auto;
+    display: block;
+    max-height: none;
+    overflow: visible;
   }
 
   .sidebar-panel > .panel-section {
-    overflow-y: visible;
+    overflow: visible;
     padding: 1.5rem;
   }
 
   .panel-section.highlighted {
     border-left: none;
-    border-bottom: none;
-    border-right: var(--border);
+    border-bottom: var(--border);
+    border-right: none;
   }
 
   .header-panel {
@@ -757,6 +797,8 @@ button.pill:hover {
 
   .main-panel {
     grid-row: 3;
+    display: block;
+    overflow: visible;
   }
 
   .main-panel-top,
@@ -767,6 +809,11 @@ button.pill:hover {
   .panel-section.border-right {
     border-right: none;
     border-bottom: var(--border);
+  }
+
+  .company-list-panel,
+  .company-list-items {
+    overflow: visible;
   }
 }
 
@@ -784,15 +831,16 @@ button.pill:hover {
     grid-row: 1;
     border-right: none;
     border-bottom: var(--border);
-    max-height: 240px;
+    max-height: none;
+    overflow: visible;
   }
 
   .sidebar-panel {
     grid-column: 1;
     grid-row: 3;
-    grid-template-columns: 1fr;
     max-height: 220px;
     border-right: none;
+    max-height: none;
   }
 
   .panel-section.highlighted {
@@ -814,8 +862,7 @@ button.pill:hover {
 
   .panel-section,
   .company-list-header,
-  .company-list-search,
-  .company-sidebar-bottom {
+  .company-list-search {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
   }

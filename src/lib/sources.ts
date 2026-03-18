@@ -186,6 +186,29 @@ function extractPageText(html: string) {
   return trimText($("body").text(), 1200);
 }
 
+function extractPageSummary(html: string) {
+  const $ = cheerio.load(html);
+  $("script, style, noscript").remove();
+
+  const metaDescription = trimText(
+    $('meta[name="description"]').attr("content") ||
+      $('meta[property="og:description"]').attr("content") ||
+      "",
+    320,
+  );
+  if (metaDescription) {
+    return metaDescription;
+  }
+
+  const paragraphs = $("main p, article p, section p, p")
+    .map((_, element) => trimText($(element).text(), 220))
+    .get()
+    .filter((paragraph) => paragraph.length > 40)
+    .filter((paragraph) => !/\b(pricing|careers|docs|start for free|read more|benefits|health|equity|pto)\b/i.test(paragraph));
+
+  return paragraphs[0] ?? extractPageText(html);
+}
+
 function extractSnippet(result: ExaResult) {
   const candidates = [
     ...(Array.isArray(result.highlights) ? result.highlights : []),
@@ -309,7 +332,7 @@ async function fetchOfficialPages(companyName: string, companyUrl?: string) {
         title: url === officialSite ? `${companyName} official site` : trimText(pathname || url, 160),
         url,
         sourceType: "official",
-        excerpt: text,
+        excerpt: url === officialSite ? extractPageSummary(html) : text,
         signals: text
           .split(". ")
           .map((sentence) => trimText(sentence, 160))
