@@ -1,6 +1,10 @@
+<!DOCTYPE html>
 <html lang="en" vid="0"><head vid="1">
 <meta charset="UTF-8" vid="2">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" vid="3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <title vid="4">Company Research Tool - Refined</title>
 <style vid="5">
     :root {
@@ -11,6 +15,8 @@
         --border: 1px solid var(--border-color);
         --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         --accent: #ffffff;
+        --color-danger: #f87171;
+        --surface-overlay: #1a1a1e;
     }
 
     * {
@@ -86,7 +92,7 @@
         background: rgba(255, 255, 255, 0.03);
         color: var(--fg-muted);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         display: inline-flex;
         align-items: center;
         text-decoration: none;
@@ -106,8 +112,8 @@
     }
 
     .icon-btn-circle {
-        width: 2.25rem;
-        height: 2.25rem;
+        width: 2.75rem;
+        height: 2.75rem;
         border-radius: 6px;
         border: var(--border);
         background: rgba(255, 255, 255, 0.03);
@@ -116,7 +122,7 @@
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: border-color 0.2s ease, color 0.2s ease;
     }
 
     .icon-btn-circle:hover {
@@ -157,14 +163,334 @@
 
     .app-grid {
         display: grid;
-        grid-template-columns: 340px 1fr;
+        grid-template-columns: 220px 340px 1fr;
         grid-template-rows: auto 1fr;
         flex-grow: 1;
         overflow: hidden;
     }
 
+    .company-list-panel {
+        grid-row: 1 / -1;
+        border-right: var(--border);
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.02);
+        overflow: hidden;
+    }
+
+    .company-list-header {
+        padding: 1.25rem 1.25rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: var(--border);
+        flex-shrink: 0;
+    }
+
+    .company-list-header .label {
+        margin-bottom: 0;
+    }
+
+    .company-list-actions {
+        display: flex;
+        gap: 0.4rem;
+    }
+
+    .company-list-actions button {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 5px;
+        border: var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--fg-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .company-list-actions button:hover {
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--fg);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .company-list-search {
+        padding: 0.75rem 1.25rem;
+        border-bottom: var(--border);
+        flex-shrink: 0;
+    }
+
+    .company-list-search input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+        border: var(--border);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+        color: var(--fg);
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .company-list-search input::placeholder {
+        color: rgba(255, 255, 255, 0.25);
+    }
+
+    .company-list-search input:focus {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .company-list-items {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem 0;
+    }
+
+    .company-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 1.25rem;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+        border-left: 2px solid transparent;
+    }
+
+    .company-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .company-item.active {
+        background: rgba(255, 255, 255, 0.06);
+        border-left-color: var(--accent);
+    }
+
+    .company-item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+    }
+
+    .company-item-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--fg);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .company-item.active .company-item-name {
+        color: var(--accent);
+    }
+
+    .company-item-meta {
+        font-size: 0.7rem;
+        color: var(--fg-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .company-item-remove {
+        opacity: 0;
+        background: none;
+        border: none;
+        color: var(--fg-muted);
+        cursor: pointer;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        transition: opacity 0.15s ease, color 0.15s ease;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .company-item:hover .company-item-remove {
+        opacity: 1;
+    }
+
+    .company-item-remove:hover {
+        color: var(--color-danger);
+    }
+
+    .company-list-footer {
+        padding: 0;
+        border-top: none;
+        flex-shrink: 0;
+    }
+
+    .company-list-footer span {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.2);
+        letter-spacing: 0.02em;
+    }
+
+    .company-sidebar-bottom {
+        padding: 1rem 1.25rem 1.25rem;
+        border-top: var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        flex-shrink: 0;
+    }
+
+    .resume-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .resume-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 0.75rem;
+    }
+
+    .resume-panel-header h3 {
+        margin-bottom: 0;
+        font-size: 0.95rem;
+    }
+
+    .resume-panel input[type="file"],
+    .resume-panel textarea {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+        border: var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+        font-family: inherit;
+    }
+
+    .resume-panel input[type="file"] {
+        padding: 0.45rem;
+        font-size: 0.75rem;
+    }
+
+    .resume-panel input[type="file"]::file-selector-button {
+        margin-right: 0.75rem;
+        border: var(--border);
+        border-radius: 6px;
+        padding: 0.35rem 0.65rem;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--fg);
+        font-family: inherit;
+        cursor: pointer;
+    }
+
+    .resume-panel textarea {
+        min-height: 140px;
+        padding: 0.75rem;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        resize: vertical;
+        outline: none;
+    }
+
+    .resume-panel textarea:focus,
+    .resume-panel input[type="file"]:focus {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .resume-file-meta,
+    .resume-helper {
+        font-size: 0.72rem;
+        color: var(--fg-muted);
+        line-height: 1.5;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.visible {
+        display: flex;
+    }
+
+    .modal {
+        background: var(--surface-overlay);
+        border: var(--border);
+        border-radius: 10px;
+        padding: 2rem;
+        width: 360px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .modal h3 {
+        margin-bottom: 0;
+    }
+
+    .modal input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+        border: var(--border);
+        border-radius: 6px;
+        padding: 0.6rem 0.85rem;
+        font-size: 0.875rem;
+        color: var(--fg);
+        font-family: inherit;
+        outline: none;
+    }
+
+    .modal input:focus {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .modal-actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .modal-actions .btn-cancel {
+        background: transparent;
+        border: var(--border);
+        color: var(--fg-muted);
+    }
+
+    .modal-actions .btn-cancel:hover {
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--fg);
+    }
+
+    .modal-actions .btn-add {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: var(--bg);
+        font-weight: 500;
+    }
+
+    .modal-actions .btn-add:hover {
+        opacity: 0.9;
+    }
+
     .header-panel {
-        grid-column: 1 / -1;
+        grid-column: 2 / -1;
         border-bottom: var(--border);
         padding: 2.5rem 3rem;
         display: flex;
@@ -186,10 +512,40 @@
 
     .sidebar-panel {
         border-right: var(--border);
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        overflow: hidden;
         background: rgba(255, 255, 255, 0.01);
+    }
+
+    .sidebar-panel > .panel-section {
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .panel-section.highlighted {
+        background: rgba(255, 255, 255, 0.03);
+        border-left: 2px solid var(--accent);
+    }
+
+    .pill.pill-tag {
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        cursor: default;
+    }
+
+    .pill-group.mb-lg {
+        margin-bottom: 2rem;
+    }
+
+    .questions-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+    }
+
+    .no-mb {
+        margin-bottom: 0;
     }
 
     .main-panel {
@@ -239,21 +595,92 @@
         letter-spacing: -0.02em;
     }
 
-    .ticker-bar {
-        background-color: #161618;
-        color: var(--fg-muted);
-        padding: 0.6rem 2rem;
-        font-size: 0.75rem;
-        display: flex;
-        justify-content: space-between;
-        border-top: var(--border);
-        letter-spacing: 0.02em;
+    @media (max-width: 1024px) {
+        .app-grid {
+            grid-template-columns: 220px 1fr;
+            grid-template-rows: auto 1fr;
+        }
+
+        .company-list-panel {
+            grid-row: 1 / -1;
+        }
+
+        .sidebar-panel {
+            display: none;
+        }
+
+        .header-panel {
+            grid-column: 2 / -1;
+        }
+
+        .main-panel-top {
+            grid-template-columns: 1fr;
+        }
+
+        .panel-section.border-right {
+            border-right: none;
+            border-bottom: var(--border);
+        }
     }
 
-    .ticker-item:not(:last-child)::after {
-        content: "•";
-        margin: 0 1rem;
-        opacity: 0.2;
+    @media (max-width: 640px) {
+        .app-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto 1fr;
+        }
+
+        .company-list-panel {
+            grid-row: 1;
+            border-right: none;
+            border-bottom: var(--border);
+            max-height: 200px;
+        }
+
+        .header-panel {
+            grid-column: 1;
+            padding: 1.5rem;
+        }
+
+        .header-panel h1 {
+            font-size: 2rem;
+        }
+
+        .header-actions {
+            flex-wrap: wrap;
+        }
+
+        .panel-section {
+            padding: 1.5rem;
+        }
+
+        .main-panel-top {
+            grid-template-columns: 1fr;
+        }
+
+        .questions-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+    }
+
+    :focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.5);
+        outline-offset: 2px;
+    }
+
+    .pill:focus-visible {
+        outline-offset: 1px;
+    }
+
+    .company-item:focus-visible {
+        background: rgba(255, 255, 255, 0.04);
+        outline-offset: -2px;
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     }
 
     ::-webkit-scrollbar {
@@ -273,39 +700,66 @@
 <body vid="6">
 
 <div class="app-grid" vid="7">
+    <nav class="company-list-panel" id="companyPanel">
+        <div class="company-list-header">
+            <span class="label">Companies</span>
+            <div class="company-list-actions">
+                <button onclick="openAddModal()" title="Add company">+</button>
+            </div>
+        </div>
+        <div class="company-list-search">
+            <input type="text" placeholder="Search..." id="companySearch" oninput="filterCompanies()" aria-label="Search companies">
+        </div>
+        <div class="company-list-items" id="companyList"></div>
+        <div class="company-sidebar-bottom">
+            <div class="company-list-footer">
+                <span id="companyCount">0 companies</span>
+            </div>
+            <section class="resume-panel" aria-labelledby="resumePanelTitle">
+                <div class="resume-panel-header">
+                    <h3 id="resumePanelTitle">Shared Resume</h3>
+                    <span class="label no-mb">All Companies</span>
+                </div>
+                <input type="file" id="resumeFile" accept=".pdf,.doc,.docx,.txt,.md" aria-label="Upload resume">
+                <p class="resume-file-meta no-mb" id="resumeFileName">No resume uploaded</p>
+                <textarea id="resumeNotes" placeholder="Paste resume highlights, quantified wins, projects, and domain expertise. This will be reused across all company briefs." aria-label="Shared resume details"></textarea>
+                <p class="resume-helper no-mb">Saved locally and reused across saved companies.</p>
+            </section>
+        </div>
+    </nav>
+
     <header class="header-panel" vid="8">
         <div class="header-title-area" vid="9">
             <h1 vid="10">Anthropic</h1>
             <div class="pill-group" vid="11">
-                <span class="pill" vid="12">Target Company</span>
-                <span class="pill" vid="13">AI Research</span>
-                <span class="pill" vid="14">San Francisco</span>
+                <button class="pill" vid="12">Target Company</button>
+                <button class="pill" vid="13">AI Research</button>
+                <button class="pill" vid="14">San Francisco</button>
             </div>
         </div>
         <div class="header-actions" vid="15">
             <button class="pill active" vid="16">Save Profile</button>
-            <button class="pill" vid="17">Export Prep Doc</button>
-            <button class="icon-btn-circle" vid="18">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" vid="19"><line x1="5" y1="12" x2="19" y2="12" vid="20"></line></svg>
+            <button class="icon-btn-circle" vid="18" aria-label="Minimize">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" vid="19" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12" vid="20"></line></svg>
             </button>
         </div>
     </header>
 
     <aside class="sidebar-panel" vid="21">
-        <div class="panel-section border-bottom" vid="22">
+        <div class="panel-section border-bottom highlighted" vid="22">
             <div class="panel-header-row" vid="23">
                 <h2 vid="24">Positioning Angle</h2>
             </div>
             <span class="label" vid="25">Matched Attributes</span>
-            <div class="pill-group" style="margin-bottom: 2rem;" vid="26">
-                <span class="pill" vid="27">Safety Engineering</span>
-                <span class="pill" vid="28">Distributed Systems</span>
-                <span class="pill" vid="29">Startup Scaling</span>
+            <div class="pill-group mb-lg" vid="26">
+                <button class="pill" vid="27">Safety Engineering</button>
+                <button class="pill" vid="28">Distributed Systems</button>
+                <button class="pill" vid="29">Startup Scaling</button>
             </div>
 
             <span class="label" vid="30">Narrative Focus</span>
             <p vid="31">Emphasize your work on constraint-based logic at Scale AI. Anthropic values rigorous safety guardrails, so framing your backend infrastructure experience as "building verifiable systems" rather than just "scaling" will resonate heavily with their Constitutional AI approach.</p>
-            <p vid="32" style="margin-bottom: 0;">Acknowledge their recent Claude 3.5 release and position your ability to build eval frameworks as a solution to their immediate post-release scaling needs.</p>
+            <p vid="32" class="no-mb">Acknowledge their recent Claude 3.5 release and position your ability to build eval frameworks as a solution to their immediate post-release scaling needs.</p>
         </div>
 
         <div class="panel-section" vid="33">
@@ -338,7 +792,7 @@
             <div class="panel-section border-right" vid="51">
                 <div class="panel-header-row" vid="52">
                     <h2 vid="53">Current Needs</h2>
-                    <span class="pill" style="font-size: 0.7rem; letter-spacing: 0.05em;" vid="54">ANALYSIS</span>
+                    <span class="pill pill-tag" vid="54">ANALYSIS</span>
                 </div>
                 <p vid="55">Based on recent job postings and leadership signals, the company is shifting from pure research mode into productization and enterprise deployment.</p>
                 <ul class="stark-list" vid="56">
@@ -351,7 +805,7 @@
             <div class="panel-section" vid="63">
                 <div class="panel-header-row" vid="64">
                     <h2 vid="65">Recent Signals</h2>
-                    <span class="pill" style="font-size: 0.7rem; letter-spacing: 0.05em;" vid="66">NEWS</span>
+                    <span class="pill pill-tag" vid="66">NEWS</span>
                 </div>
                 <ul class="stark-list" vid="67">
                     <li vid="68">Launched Claude 3.5 Sonnet, heavily promoting its coding capabilities and speed.</li>
@@ -372,32 +826,190 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;" vid="79">
+            <div class="questions-grid" vid="79">
                 <div vid="80">
                     <h3 vid="81">On Tooling &amp; Infrastructure</h3>
                     <p vid="82">"With the introduction of 'Computer Use', how is the infrastructure team adapting to handle the vast variance in context and latency requirements compared to standard chat completions?"</p>
-                    <p vid="83" style="margin-bottom: 0;">"I saw the recent paper on mechanistic interpretability. How much of that research is currently blocking or enabling product decisions on the API side?"</p>
+                    <p vid="83" class="no-mb">"I saw the recent paper on mechanistic interpretability. How much of that research is currently blocking or enabling product decisions on the API side?"</p>
                 </div>
                 <div vid="84">
                     <h3 vid="85">On Engineering Culture</h3>
                     <p vid="86">"Given the rigorous safety focus, how does the engineering team balance the need for rapid product iteration with the necessity of constitutional checks?"</p>
-                    <p vid="87" style="margin-bottom: 0;">"As you transition more into enterprise SaaS, how is the line between 'research engineering' and 'product engineering' evolving internally?"</p>
+                    <p vid="87" class="no-mb">"As you transition more into enterprise SaaS, how is the line between 'research engineering' and 'product engineering' evolving internally?"</p>
                 </div>
             </div>
         </div>
     </main>
 </div>
 
-<footer class="ticker-bar" vid="88">
-    <div style="display: flex;" vid="89">
-        <span class="ticker-item" vid="90">User: Applicant_04</span>
-        <span class="ticker-item" vid="91">Trek Prep Mode</span>
-        <span class="ticker-item" vid="92">Last Updated: 10 mins ago</span>
+<div class="modal-overlay" id="addModal" role="dialog" aria-modal="true" aria-label="Add company">
+    <div class="modal">
+        <h3>Add Company</h3>
+        <input type="text" id="newCompanyName" placeholder="Company name" onkeydown="if(event.key==='Enter')addCompany()">
+        <input type="text" id="newCompanyMeta" placeholder="Industry or notes (optional)" onkeydown="if(event.key==='Enter')addCompany()">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+            <button class="btn-add" onclick="addCompany()">Add</button>
+        </div>
     </div>
-    <div style="display: flex;" vid="93">
-        <span class="ticker-item" vid="94">Sources: LinkedIn, News API, Careers</span>
-        <span class="ticker-item" style="color: #4ade80;" vid="95">Status: Nominal</span>
-    </div>
-</footer>
+</div>
+
+<script>
+    const STORAGE_KEY = 'company-researcher-workspace';
+    const defaultCompanies = [
+        { id: 1, name: 'Anthropic', meta: 'AI Research' },
+        { id: 2, name: 'Stripe', meta: 'Fintech' },
+        { id: 3, name: 'Vercel', meta: 'Developer Tools' },
+    ];
+
+    function loadState() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    const savedState = loadState();
+    let companies = Array.isArray(savedState?.companies) && savedState.companies.length
+        ? savedState.companies
+        : defaultCompanies.slice();
+    let activeId = companies.some(company => company.id === savedState?.activeId)
+        ? savedState.activeId
+        : (companies[0] ? companies[0].id : null);
+    let nextId = Number.isFinite(savedState?.nextId)
+        ? savedState.nextId
+        : (companies.reduce((maxId, company) => Math.max(maxId, company.id), 0) + 1);
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function saveState() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                companies,
+                activeId,
+                nextId,
+                resumeNotes: document.getElementById('resumeNotes').value,
+                resumeFileName: document.getElementById('resumeFileName').textContent,
+            }));
+        } catch (error) {
+            // Ignore storage failures and keep the UI usable.
+        }
+    }
+
+    function render() {
+        const query = document.getElementById('companySearch').value.toLowerCase();
+        const list = document.getElementById('companyList');
+        const filtered = companies.filter(c =>
+            c.name.toLowerCase().includes(query) || (c.meta && c.meta.toLowerCase().includes(query))
+        );
+
+        list.innerHTML = filtered.map(c => `
+            <div class="company-item${c.id === activeId ? ' active' : ''}" role="button" tabindex="0" data-id="${c.id}">
+                <div class="company-item-info">
+                    <span class="company-item-name">${esc(c.name)}</span>
+                    ${c.meta ? `<span class="company-item-meta">${esc(c.meta)}</span>` : ''}
+                </div>
+                <button class="company-item-remove" data-remove-id="${c.id}" title="Remove ${esc(c.name)}" aria-label="Remove ${esc(c.name)}">&times;</button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.company-item').forEach(el => {
+            const id = Number(el.dataset.id);
+            el.addEventListener('click', () => selectCompany(id));
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCompany(id); }
+            });
+        });
+        list.querySelectorAll('.company-item-remove').forEach(el => {
+            const id = Number(el.dataset.removeId);
+            el.addEventListener('click', (e) => { e.stopPropagation(); removeCompany(id); });
+        });
+
+        document.getElementById('companyCount').textContent =
+            companies.length + ' compan' + (companies.length === 1 ? 'y' : 'ies');
+        saveState();
+    }
+
+    function selectCompany(id) {
+        activeId = id;
+        render();
+    }
+
+    function removeCompany(id) {
+        const idx = companies.findIndex(c => c.id === id);
+        if (idx === -1) return;
+        companies.splice(idx, 1);
+        if (activeId === id) {
+            activeId = companies.length ? companies[Math.min(idx, companies.length - 1)].id : null;
+        }
+        render();
+    }
+
+    function filterCompanies() {
+        render();
+    }
+
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('visible');
+        document.getElementById('newCompanyName').value = '';
+        document.getElementById('newCompanyMeta').value = '';
+        setTimeout(() => document.getElementById('newCompanyName').focus(), 50);
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('visible');
+    }
+
+    function addCompany() {
+        const name = document.getElementById('newCompanyName').value.trim();
+        if (!name) return;
+        const meta = document.getElementById('newCompanyMeta').value.trim();
+        const company = { id: nextId++, name, meta: meta || null };
+        companies.push(company);
+        activeId = company.id;
+        closeAddModal();
+        document.getElementById('companySearch').value = '';
+        render();
+    }
+
+    document.getElementById('addModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        const modal = document.getElementById('addModal');
+        if (!modal.classList.contains('visible')) return;
+
+        if (e.key === 'Escape') { closeAddModal(); return; }
+
+        if (e.key === 'Tab') {
+            const focusable = modal.querySelectorAll('input, button');
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault(); last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault(); first.focus();
+            }
+        }
+    });
+
+    document.getElementById('resumeNotes').value = savedState?.resumeNotes || '';
+    document.getElementById('resumeFileName').textContent = savedState?.resumeFileName || 'No resume uploaded';
+    document.getElementById('resumeNotes').addEventListener('input', saveState);
+    document.getElementById('resumeFile').addEventListener('change', function() {
+        const fileName = this.files && this.files[0] ? this.files[0].name : 'No resume uploaded';
+        document.getElementById('resumeFileName').textContent = fileName;
+        saveState();
+    });
+
+    render();
+</script>
 
 </body></html>
