@@ -38,7 +38,6 @@ export function WorkspaceApp() {
   const [search, setSearch] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeNotes, setResumeNotes] = useState("");
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const addCompanyModalRef = useRef<HTMLDivElement>(null);
   const settingsModalRef = useRef<HTMLDivElement>(null);
 
@@ -269,19 +268,15 @@ export function WorkspaceApp() {
                   <span className="company-item-meta">{company.url || formatStatus(company.status)}</span>
                 </div>
                 <button
-                  className={`company-item-remove ${confirmingDeleteId === company._id ? "confirming" : ""}`}
+                  className="company-item-remove"
                   type="button"
-                  aria-label={confirmingDeleteId === company._id ? `Confirm remove ${company.name}` : `Remove ${company.name}`}
+                  aria-label={`Remove ${company.name}`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (confirmingDeleteId === company._id) {
-                      setConfirmingDeleteId(null);
+                    if (window.confirm(`Remove ${company.name}?`)) {
                       void deleteCompany(company._id);
-                    } else {
-                      setConfirmingDeleteId(company._id);
                     }
                   }}
-                  onBlur={() => setConfirmingDeleteId(null)}
                 >
                   ×
                 </button>

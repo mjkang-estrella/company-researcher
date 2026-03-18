@@ -348,11 +348,6 @@ button.pill:hover {
   color: var(--color-danger);
 }
 
-.company-item-remove.confirming {
-  opacity: 1;
-  color: var(--color-danger);
-}
-
 .resume-file-meta,
 .resume-helper,
 .app-hint,

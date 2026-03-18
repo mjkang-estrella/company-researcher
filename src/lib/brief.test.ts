@@ -79,6 +79,21 @@ describe("isRelevantResult", () => {
 
     expect(relevant).toBe(false);
   });
+
+  it("keeps single-word matches when official-site context terms align", () => {
+    const relevant = isRelevantResult(
+      {
+        title: "Variant launches new design workflow for creative teams",
+        url: "https://designnews.example.com/variant-workflow",
+        snippet: "Variant introduced a new design canvas and collaboration workflow for visual ideation.",
+      },
+      "Variant",
+      "variant.com",
+      ["design", "canvas"],
+    );
+
+    expect(relevant).toBe(true);
+  });
 });
 
 describe("brief confidence", () => {

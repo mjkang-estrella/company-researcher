@@ -31,6 +31,35 @@ type SearchHit = {
 const COMPANY_CONTEXT_RE =
   /\b(company|startup|business|careers|jobs|funding|series|software|platform|api|product|engineering|team|announced|launch|launches|raised|raises|valuation|revenue|hiring|press|news)\b/i;
 
+const STOP_WORDS = new Set([
+  "about",
+  "after",
+  "alongside",
+  "better",
+  "build",
+  "building",
+  "company",
+  "discover",
+  "discovery",
+  "endless",
+  "first",
+  "from",
+  "ideas",
+  "just",
+  "launch",
+  "launched",
+  "latest",
+  "official",
+  "recent",
+  "scroll",
+  "site",
+  "team",
+  "their",
+  "they",
+  "uses",
+  "with",
+]);
+
 function normalizeUrl(input: string) {
   try {
     return new URL(input).toString();
@@ -64,6 +93,31 @@ function significantCompanyTokens(companyName: string) {
     .filter((token) => token.length >= 3);
 }
 
+function significantTerms(value: string) {
+  return sanitizeText(value)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 4)
+    .filter((token) => !STOP_WORDS.has(token));
+}
+
+function officialContextTerms(companyName: string, officialPages: SourceRecord[]) {
+  const companyTokens = new Set(significantCompanyTokens(companyName));
+  const terms = officialPages.flatMap((page) => significantTerms(`${page.title} ${page.excerpt}`));
+  const counts = new Map<string, number>();
+
+  for (const term of terms) {
+    if (companyTokens.has(term)) continue;
+    counts.set(term, (counts.get(term) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([term]) => term)
+    .slice(0, 4);
+}
+
 function mentionsCompany(value: string, companyName: string, tokens: string[]) {
   const normalized = sanitizeText(value).toLowerCase();
   const exactPhrase = normalized.includes(companyName.toLowerCase());
@@ -71,12 +125,19 @@ function mentionsCompany(value: string, companyName: string, tokens: string[]) {
   return exactPhrase || tokenMatches >= Math.min(tokens.length, 2);
 }
 
-export function isRelevantResult(result: SearchHit, companyName: string, officialHost?: string) {
+export function isRelevantResult(
+  result: SearchHit,
+  companyName: string,
+  officialHost?: string,
+  contextTerms: string[] = [],
+) {
   const titleAndSnippet = `${result.title} ${result.snippet}`;
   const tokens = significantCompanyTokens(companyName);
   const sameOfficialHost = officialHost ? normalizedHost(result.url) === officialHost : false;
   const mentioned = mentionsCompany(titleAndSnippet, companyName, tokens);
   const hasContext = COMPANY_CONTEXT_RE.test(titleAndSnippet) || /\/(about|company|careers|jobs|press|news|blog)\b/i.test(result.url);
+  const lower = titleAndSnippet.toLowerCase();
+  const matchesContextTerm = contextTerms.length === 0 || contextTerms.some((term) => lower.includes(term));
 
   if (sameOfficialHost) {
     return true;
@@ -87,10 +148,10 @@ export function isRelevantResult(result: SearchHit, companyName: string, officia
   }
 
   if (tokens.length <= 1) {
-    return hasContext;
+    return hasContext && matchesContextTerm;
   }
 
-  return true;
+  return matchesContextTerm || hasContext;
 }
 
 export function sanitizeText(value: string) {
@@ -279,15 +340,17 @@ export async function collectCompanySources(companyName: string, companyUrl?: st
   const officialSite = await findOfficialSite(companyName, companyUrl);
   const officialHost = officialSite ? normalizedHost(officialSite) : undefined;
   const officialPagesPromise = officialSite ? fetchOfficialPages(companyName, officialSite) : Promise.resolve([]);
+  const officialPages = await officialPagesPromise;
+  const contextTerms = officialContextTerms(companyName, officialPages);
+  const contextQuery = contextTerms.slice(0, 2).join(" ");
 
-  const [officialPages, searchResults, newsResults] = await Promise.all([
-    officialPagesPromise,
-    searchExa(`"${companyName}" company careers funding latest news`, 8),
-    searchExa(`"${companyName}" company product launches funding press news`, 8),
+  const [searchResults, newsResults] = await Promise.all([
+    searchExa(`"${companyName}" ${contextQuery} company careers funding latest news`, 8),
+    searchExa(`"${companyName}" ${contextQuery} company product launches funding press news`, 8),
   ]);
 
   const searchSources: SourceRecord[] = searchResults
-    .filter((result) => isRelevantResult(result, companyName, officialHost))
+    .filter((result) => isRelevantResult(result, companyName, officialHost, contextTerms))
     .map((result) => ({
     title: result.title,
     url: result.url,
@@ -298,7 +361,7 @@ export async function collectCompanySources(companyName: string, companyUrl?: st
     }));
 
   const newsSources: SourceRecord[] = newsResults
-    .filter((result) => isRelevantResult(result, companyName, officialHost))
+    .filter((result) => isRelevantResult(result, companyName, officialHost, contextTerms))
     .map((result) => ({
     title: result.title,
     url: result.url,
